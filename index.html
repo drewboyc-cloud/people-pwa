@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>People</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="People">
+  <meta name="theme-color" content="#007AFF">
+  <style>
+    :root{
+      --blue:#007AFF;--red:#FF3B30;--green:#34C759;--gray:#8E8E93;
+      --bg:#F2F2F7;--card:#FFF;--text:#000;--sep:rgba(60,60,67,.18);
+    }
+    @media(prefers-color-scheme:dark){
+      :root{--bg:#000;--card:#1C1C1E;--text:#FFF;--sep:rgba(84,84,88,.65);}
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);overscroll-behavior:none}
+
+    /* ── Views ────────────────────────────────────────────────── */
+    .view{display:none;flex-direction:column;height:100dvh;overflow:hidden}
+    .view.active{display:flex}
+
+    /* ── Nav ──────────────────────────────────────────────────── */
+    .nav{
+      background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      padding:calc(env(safe-area-inset-top, 59px) + 14px) 16px 8px;flex-shrink:0;z-index:50;
+    }
+    .nav-row{display:flex;align-items:center;gap:8px}
+    .nav-title{font-size:34px;font-weight:700;letter-spacing:-.5px;flex:1}
+    .nav-sub{font-size:13px;color:var(--gray);margin-top:1px}
+    .nav-btn{background:none;border:none;font-size:17px;color:var(--blue);cursor:pointer;padding:6px 2px;font-family:inherit;white-space:nowrap}
+    .nav-btn.icon{width:34px;height:34px;border-radius:50%;background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .nav-btn.back{font-size:17px;display:flex;align-items:center;gap:2px}
+    .nav-btn.back::before{content:'‹';font-size:22px;line-height:1}
+    .nav-btn.bold{font-weight:600}
+
+    /* ── Search ───────────────────────────────────────────────── */
+    .search-wrap{background:rgba(120,120,128,.12);border-radius:10px;display:flex;align-items:center;gap:6px;padding:7px 10px;margin-top:8px}
+    .search-input{flex:1;border:none;background:transparent;font-size:17px;color:var(--text);outline:none;font-family:inherit}
+    .search-input::placeholder{color:var(--gray)}
+    .search-clear{background:none;border:none;font-size:18px;color:var(--gray);cursor:pointer;line-height:1;padding:0}
+
+    /* ── List ─────────────────────────────────────────────────── */
+    .list-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 20px)}
+    .alpha-section{padding-left:16px}
+    .alpha-label{font-size:13px;font-weight:600;color:var(--gray);padding:18px 0 4px;letter-spacing:.3px}
+    .contacts-group{border-radius:13px;overflow:hidden;margin:0 16px}
+    .contact-row{background:var(--card);display:flex;align-items:center;padding:10px 14px;gap:13px;cursor:pointer}
+    .contact-row+.contact-row{border-top:1px solid var(--sep);margin-left:68px}
+    .row-info{flex:1;min-width:0}
+    .row-name{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row-mobile{font-size:13px;color:var(--gray);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row-chevron{color:var(--sep);font-size:15px}
+
+    /* ── Avatar ───────────────────────────────────────────────── */
+    .av{border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;flex-shrink:0}
+    .av img{width:100%;height:100%;object-fit:cover}
+
+    /* ── Alpha sidebar ────────────────────────────────────────── */
+    .alpha-sidebar{position:fixed;right:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:1px;z-index:60;user-select:none}
+    .alpha-key{font-size:11px;font-weight:600;color:var(--blue);padding:1px 6px;cursor:pointer;border-radius:4px}
+    .alpha-key.dim{color:var(--gray)}
+    .alpha-key:active,.alpha-key.hi{background:var(--blue);color:#fff}
+
+    /* ── Detail ───────────────────────────────────────────────── */
+    .detail-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 40px)}
+    .detail-hero{display:flex;flex-direction:column;align-items:center;padding:24px 20px 16px}
+    .detail-name{font-size:26px;font-weight:700;text-align:center;letter-spacing:-.3px;margin-top:12px}
+    .detail-bday-tip{font-size:14px;color:var(--blue);margin-top:4px;font-weight:500}
+    .detail-group{background:var(--card);border-radius:13px;margin:0 16px 14px;overflow:hidden}
+    .detail-row{display:flex;align-items:flex-start;padding:12px 16px;gap:14px;border-bottom:1px solid var(--sep)}
+    .detail-row:last-child{border-bottom:none}
+    .detail-icon{font-size:18px;flex-shrink:0;margin-top:1px;width:24px;text-align:center}
+    .detail-label{font-size:12px;color:var(--gray);margin-bottom:2px}
+    .detail-value{font-size:17px;word-break:break-word;line-height:1.4}
+    .detail-value a{color:var(--blue);text-decoration:none}
+    .btn-delete{background:var(--card);border:none;width:calc(100% - 32px);margin:0 16px;border-radius:13px;padding:16px;font-size:17px;color:var(--red);cursor:pointer;font-family:inherit}
+
+    /* ── Coursemates ──────────────────────────────────────────── */
+    .coursemates-section{padding:0 16px 16px}
+    .coursemates-label{font-size:13px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;padding:0 4px}
+    .coursemate-strip{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px}
+    .coursemate-strip::-webkit-scrollbar{display:none}
+    .coursemate-card{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;width:62px}
+    .coursemate-name{font-size:11px;text-align:center;color:var(--text);line-height:1.3;width:62px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+    /* ── Photo strip (detail + form) ─────────────────────────── */
+    .photo-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:8px 16px}
+    .photo-strip::-webkit-scrollbar{display:none}
+    .photo-thumb{
+      flex-shrink:0;width:80px;height:80px;border-radius:10px;overflow:hidden;
+      position:relative;cursor:pointer;background:var(--bg);
+    }
+    .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .photo-thumb.main-thumb{outline:3px solid var(--blue);outline-offset:1px}
+    .photo-remove{
+      position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;
+      background:rgba(0,0,0,.55);color:#fff;border:none;font-size:13px;line-height:1;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+    }
+    .photo-add-tile{
+      flex-shrink:0;width:80px;height:80px;border-radius:10px;
+      border:2px dashed var(--sep);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;cursor:pointer;
+      font-size:24px;color:var(--gray);gap:4px;background:var(--card);
+    }
+    .photo-add-tile span{font-size:11px;font-weight:500}
+
+    /* ── Form ─────────────────────────────────────────────────── */
+    .form-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 40px)}
+    .form-photo-section{padding:16px 16px 8px}
+    .form-photo-label{font-size:13px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;padding:0 4px}
+    .form-group{background:var(--card);border-radius:13px;margin:0 16px 12px;overflow:hidden}
+    .form-row{display:flex;align-items:flex-start;padding:11px 16px;gap:12px;border-bottom:1px solid var(--sep)}
+    .form-row:last-child{border-bottom:none}
+    .form-icon{font-size:17px;width:24px;text-align:center;flex-shrink:0;margin-top:2px}
+    .form-inp{flex:1;border:none;background:transparent;font-size:17px;color:var(--text);outline:none;font-family:inherit}
+    .form-inp::placeholder{color:var(--gray)}
+    .form-inp.area{resize:none;min-height:52px}
+    input[type="date"].form-inp{color:var(--blue)}
+
+    /* ── Crop modal ───────────────────────────────────────────── */
+    .crop-modal{
+      position:fixed;inset:0;background:#000;z-index:600;
+      display:none;flex-direction:column;
+    }
+    .crop-modal.open{display:flex}
+    .crop-toolbar{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:calc(env(safe-area-inset-top, 59px) + 8px) 16px 10px;
+      background:#000;flex-shrink:0;
+    }
+    .crop-toolbar button{background:none;border:none;font-size:17px;color:#fff;cursor:pointer;font-family:inherit;padding:4px 8px}
+    .crop-toolbar .use{color:#FFD60A;font-weight:600}
+    .crop-toolbar .title{font-size:15px;color:rgba(255,255,255,.7)}
+    .crop-container{flex:1;position:relative;overflow:hidden;touch-action:none}
+    .crop-img{position:absolute;touch-action:none;user-select:none;-webkit-user-select:none}
+    .crop-frame{
+      position:absolute;border-radius:12px;pointer-events:none;z-index:10;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.55);
+      border:2.5px solid rgba(255,255,255,.8);
+    }
+    .crop-hint{
+      position:absolute;bottom:calc(env(safe-area-inset-bottom, 0px) + 20px);
+      left:0;right:0;text-align:center;color:rgba(255,255,255,.55);
+      font-size:13px;pointer-events:none;z-index:11;
+    }
+
+    /* ── Full-screen photo viewer ─────────────────────────────── */
+    .viewer{position:fixed;inset:0;background:#000;z-index:700;display:none;flex-direction:column}
+    .viewer.open{display:flex}
+    .viewer-bar{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:calc(env(safe-area-inset-top, 59px) + 8px) 16px 10px;
+      background:rgba(0,0,0,.6);flex-shrink:0;
+    }
+    .viewer-bar button{background:none;border:none;font-size:17px;color:#fff;cursor:pointer;font-family:inherit}
+    .viewer-bar .vcounter{font-size:15px;color:rgba(255,255,255,.7)}
+    .viewer-stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+    .viewer-img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+    .viewer-nav{
+      position:absolute;top:50%;transform:translateY(-50%);
+      background:rgba(0,0,0,.4);border:none;color:#fff;font-size:26px;
+      cursor:pointer;padding:10px 14px;border-radius:50%;line-height:1;
+    }
+    .viewer-nav.prev{left:8px}
+    .viewer-nav.next{right:8px}
+    .viewer-dots{display:flex;gap:6px;justify-content:center;padding:10px 0 calc(env(safe-area-inset-bottom, 0px) + 10px);background:rgba(0,0,0,.6)}
+    .vdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer}
+    .vdot.active{background:#fff}
+
+    /* ── Action sheet ─────────────────────────────────────────── */
+    .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:none}
+    .sheet-overlay.open{display:block}
+    .action-sheet{position:fixed;bottom:0;left:0;right:0;z-index:400;padding:0 8px calc(env(safe-area-inset-bottom, 16px) + 8px);display:none}
+    .action-sheet.open{display:block}
+    .action-group{background:var(--card);border-radius:14px;overflow:hidden;margin-bottom:8px}
+    .action-title{font-size:13px;color:var(--gray);text-align:center;padding:12px 16px 0}
+    .action-btn{display:block;width:100%;background:none;border:none;border-top:1px solid var(--sep);padding:16px;font-size:17px;color:var(--blue);cursor:pointer;font-family:inherit;text-align:center}
+    .action-btn:first-of-type{border-top:none}
+    .action-btn.danger{color:var(--red)}
+    .action-cancel{background:var(--card);border-radius:14px;border:none;display:block;width:100%;padding:16px;font-size:17px;font-weight:600;color:var(--blue);cursor:pointer;font-family:inherit}
+
+    /* ── Cloud backup modal ───────────────────────────────────── */
+    .cloud-modal{position:fixed;inset:0;background:var(--bg);z-index:650;display:none;flex-direction:column}
+    .cloud-modal.open{display:flex}
+    .cloud-modal-bar{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,44px) + 12px) 16px 12px;border-bottom:1px solid var(--sep);flex-shrink:0}
+    .cloud-modal-title{font-size:18px;font-weight:700}
+    .cloud-modal-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px calc(env(safe-area-inset-bottom,0px) + 30px)}
+    .cloud-status{text-align:center;padding:18px 16px;background:var(--card);border-radius:13px;margin-bottom:14px}
+    .cloud-status-icon{font-size:36px;margin-bottom:6px}
+    .cloud-status-text{font-size:14px;color:var(--gray);line-height:1.5}
+    .cloud-status-text strong{color:var(--text)}
+    .cloud-action-btn{display:block;width:100%;background:var(--card);border:none;border-radius:13px;padding:15px 16px;font-size:16px;cursor:pointer;font-family:inherit;text-align:left;margin-bottom:10px}
+    .cloud-action-btn.primary{color:var(--blue);font-weight:600}
+    .cloud-action-btn.danger{color:var(--red)}
+    .cloud-token-wrap{background:var(--card);border-radius:13px;margin-bottom:10px;overflow:hidden}
+    .cloud-token-label{font-size:12px;color:var(--gray);padding:12px 16px 0;font-weight:500;text-transform:uppercase;letter-spacing:.3px}
+    .cloud-token-inp{display:block;width:100%;border:none;background:transparent;font-size:15px;color:var(--text);outline:none;font-family:inherit;padding:8px 16px 13px;letter-spacing:.5px}
+    .cloud-token-inp::placeholder{color:var(--gray);letter-spacing:0}
+    .cloud-hint{font-size:13px;color:var(--gray);line-height:1.6;margin:0 4px 16px;padding:0 4px}
+    .cloud-hint a{color:var(--blue);text-decoration:none}
+
+    /* ── Association picker modal ────────────────────────────── */
+    .assoc-modal{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;flex-direction:column}
+    .assoc-modal.open{display:flex}
+    .assoc-modal-bar{background:var(--bg);padding:calc(env(safe-area-inset-top,44px) + 10px) 16px 10px;border-bottom:1px solid var(--sep);flex-shrink:0}
+    .assoc-modal-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .assoc-modal-title{font-size:19px;font-weight:700}
+    .assoc-modal-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
+
+    /* ── Association items in form ────────────────────────────── */
+    .assoc-item{background:var(--card);border-radius:13px;margin:0 16px 10px;overflow:hidden}
+    .assoc-item-header{display:flex;align-items:center;gap:10px;padding:10px 14px}
+    .assoc-item-info{flex:1;min-width:0}
+    .assoc-item-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .assoc-item-sub{font-size:12px;color:var(--gray);margin-top:1px}
+    .assoc-item-remove{background:none;border:none;width:28px;height:28px;border-radius:50%;background:rgba(120,120,128,.15);color:var(--gray);cursor:pointer;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+    .assoc-note-wrap{border-top:1px solid var(--sep);padding:2px 14px 8px}
+    .assoc-note-inp{width:100%;border:none;background:transparent;font-size:14px;color:var(--text);outline:none;font-family:inherit;resize:none;min-height:40px;padding-top:8px;line-height:1.4}
+    .assoc-note-inp::placeholder{color:var(--gray)}
+    .assoc-add-btn{display:flex;align-items:center;gap:10px;background:var(--card);border:none;border-radius:13px;margin:0 16px 12px;padding:13px 16px;font-size:16px;color:var(--blue);cursor:pointer;font-family:inherit;width:calc(100% - 32px);text-align:left}
+
+    /* ── Associations in detail view ──────────────────────────── */
+    .assoc-section{padding:0 16px 14px}
+    .assoc-section-label{font-size:13px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;padding:0 4px}
+    .assoc-cards{border-radius:13px;overflow:hidden}
+    .assoc-card{background:var(--card);display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer}
+    .assoc-card+.assoc-card{border-top:1px solid var(--sep)}
+    .assoc-card-info{flex:1;min-width:0}
+    .assoc-card-name{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .assoc-card-note{font-size:13px;color:var(--gray);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .assoc-card-chev{color:var(--sep);font-size:15px;flex-shrink:0}
+
+    /* ── Empty / Toast ────────────────────────────────────────── */
+    .empty{text-align:center;padding:70px 24px;color:var(--gray)}
+    .empty-icon{font-size:64px;margin-bottom:16px;opacity:.4}
+    .empty-title{font-size:22px;font-weight:600;color:var(--text);margin-bottom:8px}
+    .empty-sub{font-size:15px;line-height:1.5}
+    .toast{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 24px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+    .toast.show{opacity:1}
+
+    /* ── Role tags ────────────────────────────────────────────── */
+    .role-tag{font-size:12px;font-weight:600;padding:1px 7px;border-radius:8px;display:inline-block}
+    .role-tag.captain{color:var(--blue);background:rgba(0,122,255,.13)}
+    .role-tag.fo{color:var(--green);background:rgba(52,199,89,.13)}
+
+    /* ── Segmented control (role picker in form) ──────────────── */
+    .seg-ctrl{display:flex;background:rgba(120,120,128,.12);border-radius:9px;padding:2px;gap:2px;width:100%}
+    .seg-btn{flex:1;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text);padding:6px 2px;border-radius:7px;cursor:pointer;font-family:inherit;transition:background .15s,color .15s,box-shadow .15s}
+    .seg-btn.active{font-weight:700;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.28)}
+    .seg-btn[data-role=""].active{background:#636E72}
+    .seg-btn[data-role="captain"].active{background:#0055CC}
+    .seg-btn[data-role="fo"].active{background:#1A8C3E}
+
+    /* ── Filter pills ─────────────────────────────────────────── */
+    .filter-bar{display:flex;gap:8px;padding:6px 16px 2px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
+    .filter-bar::-webkit-scrollbar{display:none}
+    .filter-pill{border:none;background:rgba(120,120,128,.12);color:var(--text);border-radius:16px;padding:5px 14px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:background .15s,color .15s}
+    .filter-pill.active{background:var(--blue);color:#fff}
+    .sort-pill{background:var(--card) !important;border:1.5px solid var(--sep) !important;color:var(--text) !important;font-size:13px !important;padding:4px 12px !important;flex-shrink:0}
+    .sort-pill.staff-sort{border-color:var(--blue) !important;color:var(--blue) !important;background:rgba(0,122,255,.08) !important}
+    .row-staff{font-size:13px;font-weight:600;color:var(--blue);font-variant-numeric:tabular-nums;white-space:nowrap;margin-right:4px;flex-shrink:0}
+  </style>
+</head>
+<body>
+
+<!-- ── View: List ──────────────────────────────────────────────── -->
+<div id="vList" class="view active">
+  <div class="nav">
+    <div class="nav-row">
+      <div style="flex:1">
+        <div class="nav-title">People</div>
+        <div class="nav-sub" id="listSub"></div>
+      </div>
+      <button class="nav-btn icon" id="cloudBtn" onclick="openCloudModal()" title="Cloud backup" style="position:relative">☁️<span id="cloudDot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg)"></span></button>
+      <button class="nav-btn icon" onclick="exportContacts()" title="Export">⬆️</button>
+      <label  class="nav-btn icon" title="Import" style="cursor:pointer">⬇️
+        <input id="importInput" type="file" accept=".json" hidden onchange="importContacts(event)">
+      </label>
+      <button class="nav-btn icon" onclick="showForm(null)" title="Add">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 2v12M2 8h12"/></svg>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L22 22"/></svg>
+      <input class="search-input" id="searchInput" placeholder="Search" type="search" autocomplete="off" oninput="onSearch(this.value)">
+      <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-pill active" data-role="" onclick="setRoleFilter('')">All</button>
+      <button class="filter-pill" data-role="captain" onclick="setRoleFilter('captain')">✈️ Captains</button>
+      <button class="filter-pill" data-role="fo" onclick="setRoleFilter('fo')">First Officers</button>
+      <div style="flex:1;min-width:6px"></div>
+      <button class="filter-pill sort-pill" id="sortBtn" onclick="cycleSortMode()" title="Sort order">A→Z</button>
+    </div>
+  </div>
+  <div class="list-scroll" id="listScroll"></div>
+  <div class="alpha-sidebar" id="alphaSidebar"></div>
+</div>
+
+<!-- ── View: Detail ────────────────────────────────────────────── -->
+<div id="vDetail" class="view">
+  <div class="nav" style="padding-bottom:10px">
+    <div class="nav-row">
+      <button class="nav-btn back" onclick="showList()">Contacts</button>
+      <div style="flex:1"></div>
+      <button class="nav-btn bold" onclick="editCurrent()">Edit</button>
+    </div>
+  </div>
+  <div class="detail-scroll" id="detailScroll"></div>
+</div>
+
+<!-- ── View: Form ──────────────────────────────────────────────── -->
+<div id="vForm" class="view">
+  <div class="nav" style="padding-bottom:10px">
+    <div class="nav-row">
+      <button class="nav-btn" onclick="cancelForm()">Cancel</button>
+      <div style="flex:1;text-align:center;font-size:17px;font-weight:600" id="formTitle">New Contact</div>
+      <button class="nav-btn bold" onclick="saveForm()">Done</button>
+    </div>
+  </div>
+  <div class="form-scroll">
+    <div class="form-photo-section">
+      <div class="form-photo-label">Photos</div>
+      <div class="photo-strip" id="formPhotoStrip"></div>
+    </div>
+    <div class="form-group">
+      <div class="form-row"><input class="form-inp" id="fFirst" placeholder="First name" autocorrect="off"></div>
+      <div class="form-row"><input class="form-inp" id="fLast"  placeholder="Last name"  autocorrect="off"></div>
+    </div>
+    <div class="form-group">
+      <div class="form-row">
+        <span class="form-icon">📱</span>
+        <input class="form-inp" id="fMobile" placeholder="Mobile" type="tel">
+      </div>
+      <div class="form-row">
+        <span class="form-icon">🎓</span>
+        <input class="form-inp" id="fCourse" placeholder="Course no. (up to 3 digits)"
+               inputmode="numeric" maxlength="3"
+               oninput="this.value=this.value.replace(/\D/g,'').slice(0,3)">
+      </div>
+      <div class="form-row">
+        <span class="form-icon">🪪</span>
+        <input class="form-inp" id="fStaff" placeholder="Staff no. (up to 6 digits)"
+               inputmode="numeric" maxlength="6"
+               oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)">
+      </div>
+      <div class="form-row" style="align-items:flex-start;padding-top:14px;padding-bottom:14px">
+        <span class="form-icon">✈️</span>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--gray);margin-bottom:7px">Role</div>
+          <div class="seg-ctrl" id="roleCtrl">
+            <button class="seg-btn active" data-role="" onclick="setFormRole('')">Other</button>
+            <button class="seg-btn" data-role="captain" onclick="setFormRole('captain')">Captain</button>
+            <button class="seg-btn" data-role="fo" onclick="setFormRole('fo')">First Officer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="form-row">
+        <span class="form-icon">🎂</span>
+        <input class="form-inp" id="fBirthday" type="date">
+      </div>
+      <div class="form-row" style="align-items:flex-start">
+        <span class="form-icon" style="margin-top:2px">📍</span>
+        <textarea class="form-inp area" id="fAddress" placeholder="Address / Location" rows="2"></textarea>
+      </div>
+      <div class="form-row" style="align-items:flex-start">
+        <span class="form-icon" style="margin-top:2px">📝</span>
+        <textarea class="form-inp area" id="fNotes" placeholder="Notes" rows="3"></textarea>
+      </div>
+    </div>
+    <div style="padding:4px 16px 6px">
+      <div class="form-photo-label">Associations</div>
+    </div>
+    <div id="formAssocContainer"></div>
+    <button class="assoc-add-btn" onclick="openAssocPicker()">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+      Add Association
+    </button>
+  </div>
+</div>
+
+<!-- ── Cloud backup modal ───────────────────────────────────────── -->
+<div id="cloudModal" class="cloud-modal">
+  <div class="cloud-modal-bar">
+    <button class="nav-btn" onclick="closeCloudModal()">Close</button>
+    <div class="cloud-modal-title">Cloud Backup</div>
+    <div style="width:50px"></div>
+  </div>
+  <div class="cloud-modal-body">
+    <div class="cloud-status" id="cloudStatus">
+      <div class="cloud-status-icon">☁️</div>
+      <div class="cloud-status-text" id="cloudStatusText">Not configured</div>
+    </div>
+
+    <div class="cloud-token-wrap">
+      <div class="cloud-token-label">GitHub Personal Access Token</div>
+      <input class="cloud-token-inp" id="cloudTokenInp" type="password"
+             placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+             autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="cloud-hint">
+      Go to <strong>github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens</strong>. Create a token with <strong>Gists: Read and write</strong> permission. Set expiration to "No expiration".<br><br>
+      ⚠️ Photos are <strong>not</strong> included in cloud backups (too large). Use the ⬆️ local export for full backups with photos.
+    </div>
+    <button class="cloud-action-btn primary" onclick="saveCloudToken()">💾 Save token &amp; backup now</button>
+    <button class="cloud-action-btn primary" id="btnCloudBackup" onclick="cloudManualBackup()" style="display:none">☁️ Backup now</button>
+    <button class="cloud-action-btn primary" id="btnCloudRestore" onclick="restoreFromCloud()" style="display:none">⬇️ Restore from cloud</button>
+    <button class="cloud-action-btn danger" id="btnCloudClear" onclick="clearCloudSettings()" style="display:none">Remove cloud settings</button>
+  </div>
+</div>
+
+<!-- ── Association picker modal ────────────────────────────────── -->
+<div id="assocModal" class="assoc-modal">
+  <div class="assoc-modal-bar">
+    <div class="assoc-modal-row">
+      <div class="assoc-modal-title">Add Association</div>
+      <button class="nav-btn" onclick="closeAssocPicker()">Cancel</button>
+    </div>
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L22 22"/></svg>
+      <input class="search-input" id="assocSearch" placeholder="Search" autocomplete="off" oninput="renderAssocPicker(this.value)">
+      <button class="search-clear" id="assocSearchClear" onclick="clearAssocSearch()" style="display:none">✕</button>
+    </div>
+  </div>
+  <div class="assoc-modal-scroll" id="assocModalList"></div>
+</div>
+
+<!-- ── Crop modal ──────────────────────────────────────────────── -->
+<div id="cropModal" class="crop-modal">
+  <div class="crop-toolbar">
+    <button onclick="cancelCrop()">Cancel</button>
+    <span class="title">Move &amp; Scale</span>
+    <button class="use" onclick="confirmCrop()">Use Photo</button>
+  </div>
+  <div class="crop-container" id="cropContainer">
+    <img id="cropImg" class="crop-img" alt="" draggable="false">
+    <div id="cropFrame" class="crop-frame"></div>
+    <div class="crop-hint">Pinch to zoom · Drag to reposition</div>
+  </div>
+</div>
+
+<!-- ── Photo viewer ────────────────────────────────────────────── -->
+<div id="viewer" class="viewer">
+  <div class="viewer-bar">
+    <button onclick="closeViewer()">✕ Close</button>
+    <span class="vcounter" id="viewerCounter"></span>
+    <div style="width:70px"></div>
+  </div>
+  <div class="viewer-stage" id="viewerStage">
+    <img id="viewerImg" class="viewer-img" alt="">
+    <button class="viewer-nav prev" id="vPrev" onclick="viewerNav(-1)">‹</button>
+    <button class="viewer-nav next" id="vNext" onclick="viewerNav(+1)">›</button>
+  </div>
+  <div class="viewer-dots" id="viewerDots"></div>
+</div>
+
+<!-- ── Photo action sheet ──────────────────────────────────────── -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="action-sheet" id="actionSheet">
+  <div class="action-group">
+    <div class="action-title">Add Photo</div>
+    <button class="action-btn" onclick="triggerCamera()">📷 Take Photo</button>
+    <button class="action-btn" onclick="triggerAlbum()">🖼️ Choose from Library</button>
+    <button class="action-btn danger" id="btnReCrop" style="display:none" onclick="reCropCurrent()">✂️ Re-crop This Photo</button>
+    <button class="action-btn danger" id="btnRemoveThumb" style="display:none" onclick="removeCurrentThumb()">Remove Photo</button>
+  </div>
+  <button class="action-cancel" onclick="closeSheet()">Cancel</button>
+</div>
+
+<!-- Hidden file inputs -->
+<input id="inputCamera" type="file" accept="image/*" capture="user" hidden onchange="handlePhotoFile(event)">
+<input id="inputAlbum"  type="file" accept="image/*"               hidden onchange="handlePhotoFile(event)">
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── IndexedDB ────────────────────────────────────────────────────
+const DB_NAME='people-pwa-v1', DB_VER=1;
+let db;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB_NAME,DB_VER);
+    r.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('contacts'))
+        d.createObjectStore('contacts',{keyPath:'id'});
+    };
+    r.onsuccess=e=>{db=e.target.result;res(db)};
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+const _tx =(m='readonly')=>db.transaction('contacts',m).objectStore('contacts');
+const dbAll =()=>new Promise((r,e)=>{const q=_tx().getAll();q.onsuccess=()=>r(q.result);q.onerror=e});
+const dbGet =id=>new Promise((r,e)=>{const q=_tx().get(id);q.onsuccess=()=>r(q.result);q.onerror=e});
+const dbPut =rec=>new Promise((r,e)=>{const q=_tx('readwrite').put(rec);q.onsuccess=()=>r(q.result);q.onerror=e});
+const dbDel =id=>new Promise((r,e)=>{const q=_tx('readwrite').delete(id);q.onsuccess=()=>r();q.onerror=e});
+
+// ── State ────────────────────────────────────────────────────────
+let contacts=[], currentId=null, editingId=null, searchQuery='';
+let formPhotos=[];          // string[] — dataURLs in the form
+let activeThumbIndex=null;  // which thumb triggered the action sheet
+let formAssociations=[];    // [{contactId, note}]
+
+// Crop state
+let cropCB=null;            // callback(dataURL)
+let cropCssW=0,cropCssH=0;
+let cropX=0,cropY=0,cropScale=1,cropMinScale=1,cropR=0;
+let cropNW=0,cropNH=0;      // natural dimensions of source image
+
+// Touch state (crop)
+let _t1=null,_t2=null;
+let _panSX=0,_panSY=0,_panStartX=0,_panStartY=0;
+let _pinchStartDist=0,_pinchStartScale=1;
+let _pinchImgSPX=0,_pinchImgSPY=0; // pivot in image-space coords
+
+// Viewer state
+let viewerPhotos=[],viewerIdx=0;
+
+// Role filter + form role
+let roleFilter='';
+let formRole='';
+
+// Sort mode: 'name' | 'staff-asc' | 'staff-desc'
+let sortMode='name';
+
+// ── Helpers ──────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+
+const PALETTE=['#FF6B6B','#FF9F43','#F9CA24','#6AB04C','#22A6B3','#4ECDC4','#45B7D1','#A29BFE','#FD79A8','#636E72'];
+function avColor(name){let h=0;for(const c of name||'?')h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length]}
+function initials(f,l){return [(f||'')[0]||'',(l||'')[0]||''].join('').toUpperCase()||'?'}
+function sortKey(c){return((c.lastName||c.firstName||'').trim().toUpperCase()||'~')}
+function groupLetter(c){const k=sortKey(c)[0];return /[A-Z]/.test(k)?k:'#'}
+function displayName(c){return[c.firstName,c.lastName].filter(Boolean).join(' ')||'No Name'}
+function getPhotos(c){return(c.photos&&c.photos.length)?c.photos:(c.photo?[c.photo]:[])}
+
+function fmtBirthday(iso){
+  if(!iso)return'';
+  return new Date(iso+'T00:00:00').toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'});
+}
+function birthdayTip(iso){
+  if(!iso)return'';
+  const t=new Date();t.setHours(0,0,0,0);
+  const b=new Date(iso+'T00:00:00');
+  const n=new Date(t.getFullYear(),b.getMonth(),b.getDate());
+  if(n<t)n.setFullYear(t.getFullYear()+1);
+  const d=Math.round((n-t)/86400000);
+  if(d===0)return'🎉 Birthday today!';
+  if(d===1)return'🎂 Birthday tomorrow!';
+  if(d<=30)return`🎂 Birthday in ${d} days`;
+  return'';
+}
+
+function avHTML(c,size=46){
+  const photos=getPhotos(c);
+  const bg=photos.length?'transparent':avColor(displayName(c));
+  const inner=photos.length?`<img src="${esc(photos[0])}" alt="">`:initials(c.firstName,c.lastName);
+  return`<div class="av" style="width:${size}px;height:${size}px;background:${bg};font-size:${Math.round(size*.38)}px">${inner}</div>`;
+}
+
+function roleLabel(c){
+  if(c.role==='captain')return`<span class="role-tag captain">Captain</span>`;
+  if(c.role==='fo')return`<span class="role-tag fo">First Officer</span>`;
+  return'';
+}
+function rowSubLine(c){
+  const r=roleLabel(c);
+  const s=c.staffNo?`#${esc(c.staffNo)}`:'';
+  const m=c.mobile?esc(c.mobile):'';
+  return[r,s,m].filter(Boolean).join(' · ');
+}
+
+// ── Render list ──────────────────────────────────────────────────
+async function loadAndRender(){contacts=await dbAll();renderList()}
+
+function renderList(){
+  const q=searchQuery.toLowerCase();
+  let items=contacts.slice();
+
+  // Sort
+  if(sortMode==='staff-asc'){
+    items.sort((a,b)=>{
+      const an=a.staffNo?parseInt(a.staffNo):Infinity;
+      const bn=b.staffNo?parseInt(b.staffNo):Infinity;
+      return an!==bn?an-bn:sortKey(a).localeCompare(sortKey(b));
+    });
+  } else if(sortMode==='staff-desc'){
+    items.sort((a,b)=>{
+      const an=a.staffNo?parseInt(a.staffNo):-1;
+      const bn=b.staffNo?parseInt(b.staffNo):-1;
+      return an!==bn?bn-an:sortKey(a).localeCompare(sortKey(b));
+    });
+  } else {
+    items.sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+  }
+
+  // Filter
+  if(q)items=items.filter(c=>
+    displayName(c).toLowerCase().includes(q)||
+    (c.mobile||'').includes(q)||
+    (c.course||'').includes(q)||
+    (c.staffNo||'').includes(q)||
+    (c.notes||'').toLowerCase().includes(q));
+  if(roleFilter)items=items.filter(c=>c.role===roleFilter);
+
+  if(roleFilter){
+    const lbl=roleFilter==='captain'?'Captain':'First Officer';
+    document.getElementById('listSub').textContent=`${items.length} ${lbl}${items.length!==1?'s':''}`;
+  }else{
+    document.getElementById('listSub').textContent=`${contacts.length} contact${contacts.length!==1?'s':''}`;
+  }
+
+  if(!items.length){
+    document.getElementById('listScroll').innerHTML=(q||roleFilter)
+      ?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><div class="empty-sub">No contacts match the current filter</div></div>`
+      :`<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No contacts yet</div><div class="empty-sub">Tap <strong>+</strong> to add your first person</div></div>`;
+    document.getElementById('alphaSidebar').innerHTML='';
+    return;
+  }
+
+  // Staff-sort: flat list, no alpha grouping
+  if(sortMode!=='name'){
+    document.getElementById('alphaSidebar').innerHTML='';
+    document.getElementById('listScroll').innerHTML=`
+      <div style="margin:16px">
+        <div class="contacts-group">
+          ${items.map(c=>{const sub=rowSubLine(c);return`
+            <div class="contact-row" onclick="showDetail('${esc(c.id)}')">
+              ${avHTML(c,46)}
+              <div class="row-info">
+                <div class="row-name">${esc(displayName(c))}</div>
+                ${sub?`<div class="row-mobile">${sub}</div>`:''}
+              </div>
+              ${c.staffNo?`<div class="row-staff">#${esc(c.staffNo)}</div>`:'<div class="row-staff" style="color:var(--sep)">—</div>'}
+              <div class="row-chevron">›</div>
+            </div>`}).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Name-sort: alphabetical grouping
+  const groups={},letterSet=new Set();
+  items.forEach(c=>{const l=groupLetter(c);letterSet.add(l);(groups[l]=groups[l]||[]).push(c)});
+  const letters=[...letterSet].sort((a,b)=>a==='#'?1:b==='#'?-1:a.localeCompare(b));
+
+  document.getElementById('listScroll').innerHTML=letters.map(l=>`
+    <div class="alpha-section" data-section="${l}">
+      ${!q?`<div class="alpha-label">${l}</div>`:''}
+      <div class="contacts-group">
+        ${groups[l].map(c=>{const sub=rowSubLine(c);return`
+          <div class="contact-row" onclick="showDetail('${esc(c.id)}')">
+            ${avHTML(c,46)}
+            <div class="row-info">
+              <div class="row-name">${esc(displayName(c))}</div>
+              ${sub?`<div class="row-mobile">${sub}</div>`:''}
+            </div>
+            <div class="row-chevron">›</div>
+          </div>`}).join('')}
+      </div>
+    </div>`).join('');
+
+  renderAlphaSidebar(letters,letterSet);
+}
+
+function renderAlphaSidebar(active,letterSet){
+  const ALL='#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const sb=document.getElementById('alphaSidebar');
+  sb.innerHTML=ALL.map(l=>`<div class="alpha-key ${letterSet.has(l)?'':'dim'}" data-letter="${l}">${l}</div>`).join('');
+  function go(y){
+    const keys=sb.querySelectorAll('.alpha-key');let hit=null;
+    keys.forEach(k=>{const r=k.getBoundingClientRect();if(y>=r.top&&y<=r.bottom)hit=k});
+    if(!hit)return;
+    sb.querySelectorAll('.alpha-key').forEach(k=>k.classList.remove('hi'));
+    hit.classList.add('hi');
+    const sec=document.querySelector(`.alpha-section[data-section="${hit.dataset.letter}"]`);
+    if(sec)sec.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  sb.addEventListener('touchstart',e=>{e.preventDefault();go(e.touches[0].clientY)},{passive:false});
+  sb.addEventListener('touchmove', e=>{e.preventDefault();go(e.touches[0].clientY)},{passive:false});
+}
+
+// ── Render detail ─────────────────────────────────────────────────
+async function showDetail(id){
+  currentId=id;
+  const c=await dbGet(id);if(!c)return;
+  const photos=getPhotos(c);
+  const bg=photos.length?'transparent':avColor(displayName(c));
+  const inner=photos.length?`<img src="${esc(photos[0])}" alt="">`:initials(c.firstName,c.lastName);
+  const tip=birthdayTip(c.birthday);
+  const roleDisp=c.role==='captain'?'✈️ Captain':c.role==='fo'?'🛫 First Officer':'';
+  const roleColor=c.role==='captain'?'var(--blue)':c.role==='fo'?'var(--green)':'';
+
+  // Hero avatar (big, tappable if photos exist)
+  const heroClick=photos.length?`onclick="openViewer(${JSON.stringify(photos).replace(/"/g,'&quot;')},0)"`:'';
+  const heroAvatar=`<div class="av" style="width:100px;height:100px;background:${bg};font-size:40px;cursor:${photos.length?'pointer':'default'}" ${heroClick}>${inner}</div>`;
+
+  // Photo strip (shown if >0 photos)
+  const strip=photos.length>1?`
+    <div class="detail-group" style="padding:12px 4px 4px">
+      <div class="photo-strip">
+        ${photos.map((p,i)=>`
+          <div class="photo-thumb ${i===0?'main-thumb':''}" onclick="openViewer(${JSON.stringify(photos).replace(/"/g,'&quot;')},${i})">
+            <img src="${esc(p)}" alt="">
+          </div>`).join('')}
+      </div>
+    </div>`:
+    (photos.length===1?'':'');
+
+  let infoRows='';
+  if(c.mobile)   infoRows+=detailRow('📱','Mobile',`<a href="tel:${esc(c.mobile)}">${esc(c.mobile)}</a>`);
+  if(c.course)   infoRows+=detailRow('🎓','Course',esc(c.course));
+  if(c.staffNo)  infoRows+=detailRow('🪪','Staff No.',`#${esc(c.staffNo)}`);
+  if(c.birthday) infoRows+=detailRow('🎂','Birthday',esc(fmtBirthday(c.birthday)));
+  if(c.address)  infoRows+=detailRow('📍','Address',esc(c.address).replace(/\n/g,'<br>'));
+  if(c.notes)    infoRows+=detailRow('📝','Notes',esc(c.notes).replace(/\n/g,'<br>'));
+
+  // Coursemates — other contacts sharing the same course number
+  const coursematesHtml = renderCoursemates(c);
+  const associationsHtml = renderAssociations(c);
+
+  document.getElementById('detailScroll').innerHTML=`
+    <div class="detail-hero">
+      ${heroAvatar}
+      <div class="detail-name">${esc(displayName(c))}</div>
+      ${roleDisp?`<div style="font-size:15px;font-weight:600;color:${roleColor};margin-top:3px">${roleDisp}</div>`:''}
+      ${tip?`<div class="detail-bday-tip">${tip}</div>`:''}
+    </div>
+    ${strip}
+    ${infoRows?`<div class="detail-group">${infoRows}</div>`:''}
+    ${associationsHtml}
+    ${coursematesHtml}
+    <button class="btn-delete" onclick="deleteContact('${esc(id)}')">Delete Contact</button>
+  `;
+  showView('vDetail');
+}
+
+function detailRow(icon,label,value){
+  return`<div class="detail-row"><div class="detail-icon">${icon}</div><div style="flex:1"><div class="detail-label">${label}</div><div class="detail-value">${value}</div></div></div>`;
+}
+
+// ── Associations (form) ───────────────────────────────────────────
+function renderFormAssociations(){
+  const container=document.getElementById('formAssocContainer');
+  if(!formAssociations.length){container.innerHTML='';return}
+  container.innerHTML=formAssociations.map((a,i)=>{
+    const c=contacts.find(x=>x.id===a.contactId);
+    if(!c)return'';
+    return`
+      <div class="assoc-item">
+        <div class="assoc-item-header">
+          ${avHTML(c,36)}
+          <div class="assoc-item-info">
+            <div class="assoc-item-name">${esc(displayName(c))}</div>
+            ${c.staffNo?`<div class="assoc-item-sub">#${esc(c.staffNo)}</div>`:c.role?`<div class="assoc-item-sub">${c.role==='captain'?'Captain':'First Officer'}</div>`:''}
+          </div>
+          <button class="assoc-item-remove" onclick="removeAssociation(${i})">✕</button>
+        </div>
+        <div class="assoc-note-wrap">
+          <textarea class="assoc-note-inp" data-idx="${i}" placeholder="Note about this association (e.g. Classmate · Course 42)" rows="2"></textarea>
+        </div>
+      </div>`;
+  }).join('');
+  // Set textarea values safely (avoids HTML-encoding issues)
+  container.querySelectorAll('.assoc-note-inp').forEach(el=>{
+    const i=parseInt(el.dataset.idx);
+    el.value=formAssociations[i].note||'';
+    el.addEventListener('input',()=>{formAssociations[i].note=el.value});
+  });
+}
+
+function removeAssociation(i){
+  formAssociations.splice(i,1);
+  renderFormAssociations();
+}
+
+function openAssocPicker(){
+  document.getElementById('assocSearch').value='';
+  document.getElementById('assocSearchClear').style.display='none';
+  renderAssocPicker('');
+  document.getElementById('assocModal').classList.add('open');
+}
+function closeAssocPicker(){document.getElementById('assocModal').classList.remove('open')}
+function clearAssocSearch(){
+  document.getElementById('assocSearch').value='';
+  document.getElementById('assocSearchClear').style.display='none';
+  renderAssocPicker('');
+}
+
+function renderAssocPicker(q){
+  const query=(q||'').toLowerCase();
+  document.getElementById('assocSearchClear').style.display=query?'block':'none';
+  const usedIds=new Set(formAssociations.map(a=>a.contactId));
+  if(editingId)usedIds.add(editingId);
+  let items=contacts
+    .filter(c=>!usedIds.has(c.id))
+    .sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+  if(query)items=items.filter(c=>
+    displayName(c).toLowerCase().includes(query)||
+    (c.staffNo||'').includes(query)||
+    (c.mobile||'').includes(query));
+
+  const el=document.getElementById('assocModalList');
+  if(!items.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">👤</div><div class="empty-title">No contacts found</div><div class="empty-sub">All contacts are already associated or no matches</div></div>`;
+    return;
+  }
+  const groups={},letterSet=new Set();
+  items.forEach(c=>{const l=groupLetter(c);letterSet.add(l);(groups[l]=groups[l]||[]).push(c)});
+  const letters=[...letterSet].sort((a,b)=>a==='#'?1:b==='#'?-1:a.localeCompare(b));
+  el.innerHTML=letters.map(l=>`
+    <div class="alpha-section" style="padding-left:16px">
+      ${!query?`<div class="alpha-label">${l}</div>`:''}
+      <div class="contacts-group">
+        ${groups[l].map(c=>{const sub=rowSubLine(c);return`
+          <div class="contact-row" onclick="selectAssocContact('${esc(c.id)}')">
+            ${avHTML(c,42)}
+            <div class="row-info">
+              <div class="row-name">${esc(displayName(c))}</div>
+              ${sub?`<div class="row-mobile">${sub}</div>`:''}
+            </div>
+          </div>`}).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function selectAssocContact(contactId){
+  formAssociations.push({contactId,note:''});
+  closeAssocPicker();
+  renderFormAssociations();
+  // Scroll form to bottom so user sees the new association + note field
+  setTimeout(()=>{
+    const s=document.querySelector('#vForm .form-scroll');
+    if(s)s.scrollTo({top:s.scrollHeight,behavior:'smooth'});
+  },100);
+}
+
+// ── Associations (detail view) ────────────────────────────────────
+function renderAssociations(c){
+  if(!c.associations||!c.associations.length)return'';
+  const cards=c.associations.map(a=>{
+    const ac=contacts.find(x=>x.id===a.contactId);
+    if(!ac)return'';
+    return`
+      <div class="assoc-card" onclick="showDetail('${esc(ac.id)}')">
+        ${avHTML(ac,44)}
+        <div class="assoc-card-info">
+          <div class="assoc-card-name">${esc(displayName(ac))}</div>
+          ${a.note?`<div class="assoc-card-note">${esc(a.note)}</div>`:'<div class="assoc-card-note" style="font-style:italic">No note</div>'}
+        </div>
+        <div class="assoc-card-chev">›</div>
+      </div>`;
+  }).filter(Boolean).join('');
+  if(!cards)return'';
+  return`
+    <div class="assoc-section">
+      <div class="assoc-section-label">Associations (${c.associations.length})</div>
+      <div class="assoc-cards">${cards}</div>
+    </div>`;
+}
+
+function renderCoursemates(c){
+  if(!c.course) return '';
+  const mates=contacts
+    .filter(x=>x.id!==c.id && x.course===c.course)
+    .sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+  if(!mates.length) return `
+    <div class="coursemates-section">
+      <div class="coursemates-label">Coursemates · Course ${esc(c.course)}</div>
+      <div style="font-size:14px;color:var(--gray);padding:0 4px">No other contacts in this course yet.</div>
+    </div>`;
+  return`
+    <div class="coursemates-section">
+      <div class="coursemates-label">Coursemates · Course ${esc(c.course)} (${mates.length})</div>
+      <div class="coursemate-strip">
+        ${mates.map(m=>`
+          <div class="coursemate-card" onclick="showDetail('${esc(m.id)}')">
+            ${avHTML(m,54)}
+            <div class="coursemate-name">${esc(displayName(m))}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ── Form ─────────────────────────────────────────────────────────
+function showForm(id){
+  editingId=id;
+  formPhotos=[];
+  formAssociations=[];
+  document.getElementById('formTitle').textContent=id?'Edit Contact':'New Contact';
+  if(id){
+    dbGet(id).then(c=>{
+      document.getElementById('fFirst').value  =c.firstName||'';
+      document.getElementById('fLast').value   =c.lastName||'';
+      document.getElementById('fMobile').value =c.mobile||'';
+      document.getElementById('fCourse').value =c.course||'';
+      document.getElementById('fStaff').value  =c.staffNo||'';
+      document.getElementById('fBirthday').value=c.birthday||'';
+      document.getElementById('fAddress').value=c.address||'';
+      document.getElementById('fNotes').value  =c.notes||'';
+      formPhotos=getPhotos(c).slice();
+      formAssociations=(c.associations||[]).map(a=>({...a}));
+      setFormRole(c.role||'');
+      renderFormPhotos();
+      renderFormAssociations();
+    });
+  } else {
+    ['fFirst','fLast','fMobile','fCourse','fStaff','fBirthday','fAddress','fNotes'].forEach(i=>document.getElementById(i).value='');
+    setFormRole('');
+    renderFormPhotos();
+    renderFormAssociations();
+  }
+  showView('vForm');
+}
+
+function renderFormPhotos(){
+  const strip=document.getElementById('formPhotoStrip');
+  let html=formPhotos.map((p,i)=>`
+    <div class="photo-thumb ${i===0?'main-thumb':''}" onclick="openThumbSheet(${i})">
+      <img src="${esc(p)}" alt="">
+      <button class="photo-remove" onclick="event.stopPropagation();removeFormPhoto(${i})">✕</button>
+    </div>`).join('');
+  html+=`<div class="photo-add-tile" onclick="openAddSheet()">📷<span>Add</span></div>`;
+  strip.innerHTML=html;
+}
+
+async function saveForm(){
+  const firstName=document.getElementById('fFirst').value.trim();
+  const lastName =document.getElementById('fLast').value.trim();
+  if(!firstName&&!lastName){showToast('Please enter a name');document.getElementById('fFirst').focus();return}
+  const contact={
+    id:        editingId||uid(),
+    firstName, lastName,
+    mobile:    document.getElementById('fMobile').value.trim(),
+    course:    document.getElementById('fCourse').value.replace(/\D/g,'').slice(0,3),
+    staffNo:   document.getElementById('fStaff').value.replace(/\D/g,'').slice(0,6),
+    role:      formRole,
+    associations: formAssociations.filter(a=>a.contactId),
+    birthday:  document.getElementById('fBirthday').value,
+    address:   document.getElementById('fAddress').value.trim(),
+    notes:     document.getElementById('fNotes').value.trim(),
+    photos:    formPhotos.slice(),
+    updatedAt: new Date().toISOString(),
+    createdAt: editingId?undefined:new Date().toISOString(),
+  };
+  if(editingId){const e=await dbGet(editingId);contact.createdAt=e?.createdAt||contact.updatedAt}
+  await dbPut(contact);
+  await loadAndRender();
+  currentId=contact.id;
+  showDetail(contact.id);
+  showToast(editingId?'Contact updated':'Contact added');
+  cloudAutoBackup();
+}
+
+function editCurrent(){showForm(currentId)}
+async function deleteContact(id){
+  if(!confirm('Delete this contact? This cannot be undone.'))return;
+  await dbDel(id);await loadAndRender();showList();showToast('Contact deleted');
+  cloudAutoBackup();
+}
+function cancelForm(){editingId?showDetail(currentId):showList()}
+
+// ── Photo action sheets ───────────────────────────────────────────
+function openAddSheet(){
+  activeThumbIndex=null;
+  document.getElementById('btnReCrop').style.display='none';
+  document.getElementById('btnRemoveThumb').style.display='none';
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.getElementById('actionSheet').classList.add('open');
+}
+function openThumbSheet(i){
+  activeThumbIndex=i;
+  document.getElementById('btnReCrop').style.display='';
+  document.getElementById('btnRemoveThumb').style.display='';
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.getElementById('actionSheet').classList.add('open');
+}
+function closeSheet(){
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.getElementById('actionSheet').classList.remove('open');
+}
+function triggerCamera(){closeSheet();document.getElementById('inputCamera').click()}
+function triggerAlbum() {closeSheet();document.getElementById('inputAlbum').click()}
+function removeCurrentThumb(){
+  if(activeThumbIndex!==null){removeFormPhoto(activeThumbIndex)}
+  closeSheet();
+}
+function reCropCurrent(){
+  closeSheet();
+  if(activeThumbIndex===null)return;
+  const dataURL=formPhotos[activeThumbIndex];
+  openCropper(dataURL,result=>{formPhotos[activeThumbIndex]=result;renderFormPhotos()});
+}
+function removeFormPhoto(i){formPhotos.splice(i,1);renderFormPhotos()}
+
+function handlePhotoFile(e){
+  const file=e.target.files[0];if(!file)return;
+  e.target.value='';
+  const reader=new FileReader();
+  reader.onload=ev=>openCropper(ev.target.result,result=>{
+    formPhotos.push(result);
+    renderFormPhotos();
+  });
+  reader.readAsDataURL(file);
+}
+
+// ── Crop module ───────────────────────────────────────────────────
+function openCropper(dataURL,callback){
+  cropCB=callback;
+  cropX=0;cropY=0;cropScale=1;
+  const modal=document.getElementById('cropModal');
+  const container=document.getElementById('cropContainer');
+  modal.classList.add('open');
+
+  const img=document.getElementById('cropImg');
+  img.onload=()=>{
+    cropNW=img.naturalWidth;cropNH=img.naturalHeight;
+    const cw=container.offsetWidth, ch=container.offsetHeight;
+    cropR=Math.min(cw,ch)*0.42;
+    const cropD=cropR*2;
+
+    // Set CSS dimensions so image exactly fills crop square at scale=1
+    const ratio=Math.max(cropD/cropNW,cropD/cropNH);
+    cropCssW=cropNW*ratio;
+    cropCssH=cropNH*ratio;
+    cropMinScale=1;
+
+    // Position crop frame
+    const frame=document.getElementById('cropFrame');
+    frame.style.width=cropD+'px';frame.style.height=cropD+'px';
+    frame.style.left=(cw/2-cropR)+'px';frame.style.top=(ch/2-cropR)+'px';
+
+    applyCropTransform();
+  };
+  img.src=dataURL;
+}
+
+function applyCropTransform(){
+  const container=document.getElementById('cropContainer');
+  const cw=container.offsetWidth, ch=container.offsetHeight;
+
+  // Clamp pan so image always covers the crop square
+  const hw=cropCssW*cropScale/2, hh=cropCssH*cropScale/2;
+  cropX=Math.max(-(hw-cropR),Math.min(hw-cropR,cropX));
+  cropY=Math.max(-(hh-cropR),Math.min(hh-cropR,cropY));
+
+  const img=document.getElementById('cropImg');
+  const w=cropCssW*cropScale, h=cropCssH*cropScale;
+  img.style.width=w+'px';
+  img.style.height=h+'px';
+  img.style.left=(cw/2+cropX-w/2)+'px';
+  img.style.top =(ch/2+cropY-h/2)+'px';
+  img.style.transform=''; // position set directly, no transform needed
+}
+
+function cancelCrop(){
+  document.getElementById('cropModal').classList.remove('open');
+  cropCB=null;
+}
+
+function confirmCrop(){
+  const img=document.getElementById('cropImg');
+  // srcX, srcY, srcSize: in natural image pixels
+  const s=cropScale;
+  const srcX=(cropCssW*s/2-cropX-cropR)*(cropNW/(cropCssW*s));
+  const srcY=(cropCssH*s/2-cropY-cropR)*(cropNH/(cropCssH*s));
+  const srcSize=cropR*2*(cropNW/(cropCssW*s));
+
+  const canvas=document.createElement('canvas');
+  canvas.width=canvas.height=1200;
+  canvas.getContext('2d').drawImage(img,
+    Math.round(srcX),Math.round(srcY),Math.round(srcSize),Math.round(srcSize),
+    0,0,1200,1200);
+
+  document.getElementById('cropModal').classList.remove('open');
+  if(cropCB)cropCB(canvas.toDataURL('image/jpeg',0.82));
+  cropCB=null;
+}
+
+// ── Crop touch handlers ───────────────────────────────────────────
+(function(){
+  const cont=()=>document.getElementById('cropContainer');
+
+  function onTouchStart(e){
+    e.preventDefault();
+    if(e.touches.length===1){
+      _t1=e.touches[0];_t2=null;
+      _panStartX=cropX;_panStartY=cropY;
+      _panSX=_t1.clientX;_panSY=_t1.clientY;
+    } else if(e.touches.length>=2){
+      _t1=e.touches[0];_t2=e.touches[1];
+      _pinchStartDist=Math.hypot(_t2.clientX-_t1.clientX,_t2.clientY-_t1.clientY);
+      _pinchStartScale=cropScale;
+      // Pivot point in image-space
+      const midX=(_t1.clientX+_t2.clientX)/2, midY=(_t1.clientY+_t2.clientY)/2;
+      const c=cont(), rect=c.getBoundingClientRect();
+      const cx=rect.left+c.offsetWidth/2, cy=rect.top+c.offsetHeight/2;
+      _pinchImgSPX=(midX-cx-cropX)/cropScale;
+      _pinchImgSPY=(midY-cy-cropY)/cropScale;
+    }
+  }
+
+  function onTouchMove(e){
+    e.preventDefault();
+    if(e.touches.length===1&&!_t2){
+      cropX=_panStartX+(e.touches[0].clientX-_panSX);
+      cropY=_panStartY+(e.touches[0].clientY-_panSY);
+    } else if(e.touches.length>=2){
+      const t1=e.touches[0],t2=e.touches[1];
+      const dist=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+      cropScale=Math.max(cropMinScale,Math.min(8,_pinchStartScale*(dist/_pinchStartDist)));
+      // Adjust pan to keep pivot fixed
+      const midX=(t1.clientX+t2.clientX)/2, midY=(t1.clientY+t2.clientY)/2;
+      const c=cont(), rect=c.getBoundingClientRect();
+      const cx=rect.left+c.offsetWidth/2, cy=rect.top+c.offsetHeight/2;
+      cropX=midX-cx-_pinchImgSPX*cropScale;
+      cropY=midY-cy-_pinchImgSPY*cropScale;
+    }
+    applyCropTransform();
+  }
+
+  // Mouse fallback for desktop/preview
+  let mouseDown=false,mStartX=0,mStartY=0,mStartCropX=0,mStartCropY=0;
+  function onMouseDown(e){mouseDown=true;mStartX=e.clientX;mStartY=e.clientY;mStartCropX=cropX;mStartCropY=cropY}
+  function onMouseMove(e){if(!mouseDown)return;cropX=mStartCropX+(e.clientX-mStartX);cropY=mStartCropY+(e.clientY-mStartY);applyCropTransform()}
+  function onMouseUp(){mouseDown=false}
+  function onWheel(e){
+    e.preventDefault();
+    cropScale=Math.max(cropMinScale,Math.min(8,cropScale*(e.deltaY<0?1.1:0.91)));
+    applyCropTransform();
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const c=document.getElementById('cropContainer');
+    c.addEventListener('touchstart',onTouchStart,{passive:false});
+    c.addEventListener('touchmove', onTouchMove, {passive:false});
+    c.addEventListener('mousedown', onMouseDown);
+    c.addEventListener('mousemove', onMouseMove);
+    c.addEventListener('mouseup',   onMouseUp);
+    c.addEventListener('mouseleave',onMouseUp);
+    c.addEventListener('wheel',     onWheel,{passive:false});
+  });
+})();
+
+// ── Photo viewer ──────────────────────────────────────────────────
+function openViewer(photos,idx){
+  if(!photos||!photos.length)return;
+  viewerPhotos=photos;viewerIdx=idx;
+  document.getElementById('viewer').classList.add('open');
+  renderViewer();
+}
+function renderViewer(){
+  const p=viewerPhotos, i=viewerIdx;
+  document.getElementById('viewerImg').src=p[i];
+  document.getElementById('viewerCounter').textContent=p.length>1?`${i+1} / ${p.length}`:'';
+  document.getElementById('vPrev').style.display=p.length>1&&i>0?'':'none';
+  document.getElementById('vNext').style.display=p.length>1&&i<p.length-1?'':'none';
+  document.getElementById('viewerDots').innerHTML=p.length>1
+    ?p.map((_,j)=>`<div class="vdot ${j===i?'active':''}" onclick="viewerNav(${j-i})"></div>`).join(''):'';
+}
+function viewerNav(delta){viewerIdx=Math.max(0,Math.min(viewerPhotos.length-1,viewerIdx+delta));renderViewer()}
+function closeViewer(){document.getElementById('viewer').classList.remove('open')}
+
+// ── Role filter & form role ───────────────────────────────────────
+function setRoleFilter(role){
+  roleFilter=role;
+  document.querySelectorAll('.filter-pill').forEach(p=>p.classList.toggle('active',p.dataset.role===role));
+  renderList();
+}
+function setFormRole(role){
+  formRole=role;
+  document.querySelectorAll('#roleCtrl .seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.role===role));
+}
+function cycleSortMode(){
+  const modes=['name','staff-asc','staff-desc'];
+  sortMode=modes[(modes.indexOf(sortMode)+1)%modes.length];
+  const btn=document.getElementById('sortBtn');
+  if(sortMode==='name'){btn.textContent='A→Z';btn.classList.remove('staff-sort')}
+  else if(sortMode==='staff-asc'){btn.textContent='# ↑';btn.classList.add('staff-sort')}
+  else{btn.textContent='# ↓';btn.classList.add('staff-sort')}
+  renderList();
+}
+
+// ── Viewer swipe gesture ──────────────────────────────────────────
+(function(){
+  let swipeX=0,swipeY=0;
+  document.addEventListener('DOMContentLoaded',()=>{
+    const stage=document.getElementById('viewerStage');
+    stage.addEventListener('touchstart',e=>{swipeX=e.touches[0].clientX;swipeY=e.touches[0].clientY},{passive:true});
+    stage.addEventListener('touchend',e=>{
+      const dx=e.changedTouches[0].clientX-swipeX;
+      const dy=e.changedTouches[0].clientY-swipeY;
+      if(Math.abs(dx)>44&&Math.abs(dx)>Math.abs(dy))viewerNav(dx<0?1:-1);
+    },{passive:true});
+  });
+})();
+
+// ── Navigation ────────────────────────────────────────────────────
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function showList(){showView('vList');renderList()}
+
+// ── Search ────────────────────────────────────────────────────────
+function onSearch(v){searchQuery=v.trim();document.getElementById('searchClear').style.display=v?'block':'none';renderList()}
+function clearSearch(){document.getElementById('searchInput').value='';onSearch('');document.getElementById('searchInput').focus()}
+
+// ── Export / Import ───────────────────────────────────────────────
+function exportContacts(){
+  if(!contacts.length){showToast('No contacts to export');return}
+  const data=JSON.stringify({version:1,exportedAt:new Date().toISOString(),contacts},null,2);
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(data);
+  a.download=`people-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  showToast(`Exported ${contacts.length} contacts`);
+}
+async function importContacts(e){
+  const file=e.target.files[0];if(!file)return;e.target.value='';
+  try{
+    const data=JSON.parse(await file.text());
+    const list=data.contacts||(Array.isArray(data)?data:[]);
+    if(!list.length){showToast('No contacts found in file');return}
+    if(!confirm(`Import ${list.length} contacts?`))return;
+    for(const c of list){
+      // Migrate old single-photo format
+      if(!c.photos&&c.photo){c.photos=[c.photo];delete c.photo}
+      await dbPut(c);
+    }
+    await loadAndRender();showToast(`Imported ${list.length} contacts`);
+  }catch{showToast('Invalid backup file')}
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
+
+// ── Cloud backup (GitHub Gist) ────────────────────────────────────
+const CK_TOKEN='ppwa_gh_token', CK_GIST='ppwa_gist_id', CK_LAST='ppwa_last_backup';
+
+function getCloudToken(){return localStorage.getItem(CK_TOKEN)||''}
+function getCloudGistId(){return localStorage.getItem(CK_GIST)||''}
+
+// Strip photos before cloud backup (too large for Gist)
+function contactMetaOnly(c){
+  const {photos,photo,...rest}=c; // eslint-disable-line no-unused-vars
+  return rest;
+}
+
+function fmtRelative(iso){
+  if(!iso)return'';
+  const diff=Date.now()-new Date(iso).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1)return'just now';
+  if(m<60)return`${m}m ago`;
+  const h=Math.floor(m/60);
+  if(h<24)return`${h}h ago`;
+  return new Date(iso).toLocaleDateString([],{month:'short',day:'numeric'});
+}
+
+function refreshCloudUI(){
+  const token=getCloudToken();
+  const gistId=getCloudGistId();
+  const last=localStorage.getItem(CK_LAST);
+  const dot=document.getElementById('cloudDot');
+  if(dot)dot.style.display=token?'block':'none';
+
+  // modal UI
+  const inp=document.getElementById('cloudTokenInp');
+  if(inp)inp.value=token?'●'.repeat(12):'';
+  const statusTxt=document.getElementById('cloudStatusText');
+  if(statusTxt){
+    if(token&&last){
+      statusTxt.innerHTML=`<strong>Active</strong> · Last backed up ${fmtRelative(last)}`;
+    } else if(token){
+      statusTxt.innerHTML=`<strong>Configured</strong> — no backup yet`;
+    } else {
+      statusTxt.textContent='Enter your GitHub token below to enable automatic cloud backup after every contact save.';
+    }
+  }
+  ['btnCloudBackup','btnCloudRestore','btnCloudClear'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=token?'':'none';
+  });
+}
+
+async function cloudAutoBackup(){
+  const token=getCloudToken();
+  if(!token)return;
+  try{
+    const stripped=contacts.map(contactMetaOnly);
+    const payload={version:1,exportedAt:new Date().toISOString(),contacts:stripped};
+    const body={
+      description:'People PWA — auto backup',
+      public:false,
+      files:{'people-backup.json':{content:JSON.stringify(payload)}}
+    };
+    const gistId=getCloudGistId();
+    const res=await fetch(
+      gistId?`https://api.github.com/gists/${gistId}`:'https://api.github.com/gists',
+      {method:gistId?'PATCH':'POST',
+       headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
+       body:JSON.stringify(body)}
+    );
+    if(!res.ok)throw new Error(res.status);
+    const json=await res.json();
+    if(!gistId)localStorage.setItem(CK_GIST,json.id);
+    localStorage.setItem(CK_LAST,new Date().toISOString());
+    refreshCloudUI();
+  }catch(e){
+    console.warn('Cloud auto-backup failed:',e);
+  }
+}
+
+async function cloudManualBackup(){
+  const token=getCloudToken();
+  if(!token){openCloudModal();return}
+  showToast('Backing up…');
+  const gistId=getCloudGistId();
+  try{
+    const stripped=contacts.map(contactMetaOnly);
+    const payload={version:1,exportedAt:new Date().toISOString(),contacts:stripped};
+    const body={
+      description:'People PWA — manual backup',
+      public:false,
+      files:{'people-backup.json':{content:JSON.stringify(payload)}}
+    };
+    const res=await fetch(
+      gistId?`https://api.github.com/gists/${gistId}`:'https://api.github.com/gists',
+      {method:gistId?'PATCH':'POST',
+       headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
+       body:JSON.stringify(body)}
+    );
+    if(!res.ok)throw new Error(res.status);
+    const json=await res.json();
+    if(!gistId)localStorage.setItem(CK_GIST,json.id);
+    localStorage.setItem(CK_LAST,new Date().toISOString());
+    refreshCloudUI();
+    showToast(`☁️ Backed up ${contacts.length} contacts`);
+  }catch(e){
+    showToast('Backup failed — check your token');
+  }
+}
+
+async function restoreFromCloud(){
+  const token=getCloudToken(),gistId=getCloudGistId();
+  if(!token||!gistId){showToast('No cloud backup found');return}
+  try{
+    const res=await fetch(`https://api.github.com/gists/${gistId}`,
+      {headers:{'Authorization':`Bearer ${token}`}});
+    if(!res.ok)throw new Error(res.status);
+    const gist=await res.json();
+    const content=gist.files['people-backup.json']?.content;
+    if(!content){showToast('Backup file not found in Gist');return}
+    const data=JSON.parse(content);
+    const list=data.contacts||[];
+    const dateStr=data.exportedAt?new Date(data.exportedAt).toLocaleString():'unknown date';
+    if(!confirm(`Restore ${list.length} contacts from cloud backup?\n(saved ${dateStr})\n\nNote: photos are not included — they will need to be re-added.`))return;
+    for(const c of list){
+      if(!c.photos&&c.photo){c.photos=[c.photo];delete c.photo}
+      if(!c.photos)c.photos=[];
+      await dbPut(c);
+    }
+    await loadAndRender();
+    closeCloudModal();
+    showToast(`✅ Restored ${list.length} contacts`);
+  }catch(e){
+    showToast('Restore failed — check token/connection');
+  }
+}
+
+function saveCloudToken(){
+  const raw=document.getElementById('cloudTokenInp').value.trim();
+  // If user typed dots (masked display), keep the existing token
+  if(raw&&!raw.startsWith('●')){
+    localStorage.setItem(CK_TOKEN,raw);
+    localStorage.removeItem(CK_GIST); // new token = new gist
+    localStorage.removeItem(CK_LAST);
+  }
+  refreshCloudUI();
+  cloudManualBackup();
+}
+
+function clearCloudSettings(){
+  if(!confirm('Remove cloud backup settings and forget the backup link?'))return;
+  [CK_TOKEN,CK_GIST,CK_LAST].forEach(k=>localStorage.removeItem(k));
+  if(document.getElementById('cloudTokenInp'))
+    document.getElementById('cloudTokenInp').value='';
+  refreshCloudUI();
+  showToast('Cloud settings removed');
+}
+
+function openCloudModal(){
+  refreshCloudUI();
+  // Show actual token masked but let user re-enter
+  const inp=document.getElementById('cloudTokenInp');
+  const token=getCloudToken();
+  if(inp)inp.value=token?'':'';
+  document.getElementById('cloudModal').classList.add('open');
+}
+function closeCloudModal(){document.getElementById('cloudModal').classList.remove('open')}
+
+// ── Service worker ────────────────────────────────────────────────
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+// ── Init ──────────────────────────────────────────────────────────
+openDB().then(()=>{loadAndRender();refreshCloudUI()});
+</script>
+</body>
+</html>
